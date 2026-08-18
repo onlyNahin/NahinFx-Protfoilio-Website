@@ -487,6 +487,83 @@ export async function getCmsData(): Promise<CmsData> {
 }
 
 export async function saveCmsData(newData: CmsData): Promise<CmsData> {
-  // TODO: Implement actual save logic if using an admin dashboard
+  const supabase = await createClient();
+
+  // 1. Update site_settings
+  await supabase.from('site_settings').upsert({
+    id: 1,
+    hero: newData.hero,
+    about: newData.about,
+    seo: newData.seo,
+    theme: newData.theme
+  });
+
+  // Helper for sync arrays
+  async function syncTable(tableName: string, data: any[], formatFn?: (item: any) => any) {
+    if (!data) return;
+    const formattedData = formatFn ? data.map(formatFn) : data;
+    
+    // Upsert all new items
+    if (formattedData.length > 0) {
+      const { error } = await supabase.from(tableName).upsert(formattedData);
+      if (error) console.error(`Error upserting ${tableName}:`, error);
+    }
+
+    // Delete removed items
+    const { data: currentItems } = await supabase.from(tableName).select('id');
+    const newIds = formattedData.map((i: any) => i.id);
+    const toDelete = currentItems?.filter(i => !newIds.includes(i.id)) || [];
+    
+    if (toDelete.length > 0) {
+      const deleteIds = toDelete.map(i => i.id);
+      const { error } = await supabase.from(tableName).delete().in('id', deleteIds);
+      if (error) console.error(`Error deleting from ${tableName}:`, error);
+    }
+  }
+
+  await syncTable('experiences', newData.experiences);
+  await syncTable('skills', newData.skills);
+  await syncTable('software', newData.software, (s: any) => ({
+    id: s.id,
+    name: s.name,
+    icon_url: s.iconUrl,
+    level: s.level,
+    color: s.color
+  }));
+  await syncTable('projects', newData.projects, (p: any) => ({
+    id: p.id,
+    title: p.title,
+    category: p.category,
+    description: p.description,
+    client: p.client,
+    software_used: p.softwareUsed || [],
+    date: p.date,
+    featured: p.featured || false,
+    thumbnail: p.thumbnail,
+    images: p.images || [],
+    video_url: p.videoUrl || null,
+    behance_url: p.behanceUrl || null,
+    github_url: p.githubUrl || null,
+    demo_url: p.demoUrl || null,
+    download_url: p.downloadUrl || null,
+    tags: p.tags || []
+  }));
+  await syncTable('testimonials', newData.testimonials);
+  await syncTable('achievements', newData.achievements);
+  await syncTable('blogs', newData.blogs, (b: any) => ({
+    id: b.id,
+    title: b.title,
+    slug: b.slug,
+    excerpt: b.excerpt,
+    content: b.content,
+    category: b.category,
+    tags: b.tags || [],
+    cover_image: b.coverImage,
+    date: b.date,
+    read_time: b.readTime,
+    published: b.published || false
+  }));
+  await syncTable('messages', newData.messages);
+
   return newData;
 }
