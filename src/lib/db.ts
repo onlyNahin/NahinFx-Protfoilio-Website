@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/admin';
 
 export interface Project {
   id: string;
@@ -487,16 +488,18 @@ export async function getCmsData(): Promise<CmsData> {
 }
 
 export async function saveCmsData(newData: CmsData): Promise<CmsData> {
-  const supabase = await createClient();
+  // Use the service-role admin client so RLS does not block writes
+  const supabase = createAdminClient();
 
   // 1. Update site_settings
-  await supabase.from('site_settings').upsert({
+  const { error: settingsError } = await supabase.from('site_settings').upsert({
     id: 1,
     hero: newData.hero,
     about: newData.about,
     seo: newData.seo,
     theme: newData.theme
   });
+  if (settingsError) throw new Error(settingsError.message);
 
   // Helper for sync arrays
   async function syncTable(tableName: string, data: any[], formatFn?: (item: any) => any) {
@@ -506,7 +509,10 @@ export async function saveCmsData(newData: CmsData): Promise<CmsData> {
     // Upsert all new items
     if (formattedData.length > 0) {
       const { error } = await supabase.from(tableName).upsert(formattedData);
-      if (error) console.error(`Error upserting ${tableName}:`, error);
+      if (error) {
+        console.error(`Error upserting ${tableName}:`, error);
+        throw new Error(error.message);
+      }
     }
 
     // Delete removed items
@@ -517,7 +523,10 @@ export async function saveCmsData(newData: CmsData): Promise<CmsData> {
     if (toDelete.length > 0) {
       const deleteIds = toDelete.map(i => i.id);
       const { error } = await supabase.from(tableName).delete().in('id', deleteIds);
-      if (error) console.error(`Error deleting from ${tableName}:`, error);
+      if (error) {
+        console.error(`Error deleting from ${tableName}:`, error);
+        throw new Error(error.message);
+      }
     }
   }
 

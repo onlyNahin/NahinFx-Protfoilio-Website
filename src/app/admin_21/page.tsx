@@ -40,6 +40,8 @@ export default function AdminPage() {
     const json = await res.json();
     if (json.success) {
       setData(json.data);
+    } else {
+      throw new Error(json.error || 'Failed to save data');
     }
   };
 
