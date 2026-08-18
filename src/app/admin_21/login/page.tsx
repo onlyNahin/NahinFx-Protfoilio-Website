@@ -2,21 +2,38 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Lock, User, ArrowRight, Sparkles } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowRight } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'admin' && password === 'admin123') {
-      localStorage.setItem('portfolio_admin_auth', 'true');
-      router.push('/admin_21');
-    } else {
-      setError('Invalid admin credentials. (Use admin / admin123)');
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/admin-auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (res.ok) {
+        router.push('/admin_21');
+        router.refresh();
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Invalid credentials');
+      }
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -27,7 +44,7 @@ export default function AdminLoginPage() {
 
       <div className="relative z-10 w-full max-w-md">
         <div className="glass-panel p-8 rounded-3xl shadow-2xl flex flex-col gap-6">
-          
+
           <div className="flex flex-col items-center text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-600 text-white shadow-xl mb-3">
               <Shield className="h-7 w-7" />
@@ -48,14 +65,16 @@ export default function AdminLoginPage() {
 
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-bold text-gray-300">USERNAME</label>
+              <label className="text-xs font-bold text-gray-300">EMAIL</label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                 <input
-                  type="text"
+                  type="email"
                   required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
                   className="w-full rounded-xl border border-white/10 bg-black/50 pl-10 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:border-red-500 focus:outline-none"
                 />
               </div>
@@ -68,8 +87,10 @@ export default function AdminLoginPage() {
                 <input
                   type="password"
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
                   className="w-full rounded-xl border border-white/10 bg-black/50 pl-10 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:border-red-500 focus:outline-none"
                 />
               </div>
@@ -77,19 +98,19 @@ export default function AdminLoginPage() {
 
             <button
               type="submit"
-              className="flex items-center justify-center gap-2 rounded-xl bg-red-600 py-3.5 font-extrabold text-sm text-white shadow-xl hover:bg-red-500 transition-all mt-2"
+              disabled={loading}
+              className="flex items-center justify-center gap-2 rounded-xl bg-red-600 py-3.5 font-extrabold text-sm text-white shadow-xl hover:bg-red-500 transition-all mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <span>SIGN IN TO CMS</span>
-              <ArrowRight className="h-4 w-4" />
+              {loading ? (
+                <span>AUTHENTICATING...</span>
+              ) : (
+                <>
+                  <span>SIGN IN TO CMS</span>
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </button>
           </form>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center text-xs text-gray-400 flex flex-col gap-1">
-            <span className="font-bold text-red-400 flex items-center justify-center gap-1">
-              <Sparkles className="h-3.5 w-3.5" /> Quick Demo Credentials
-            </span>
-            <span>Username: <strong className="text-white">admin</strong> | Password: <strong className="text-white">admin123</strong></span>
-          </div>
 
         </div>
       </div>

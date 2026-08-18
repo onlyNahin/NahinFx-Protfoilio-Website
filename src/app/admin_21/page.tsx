@@ -12,18 +12,20 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const auth = localStorage.getItem('portfolio_admin_auth');
-    if (!auth) {
-      router.push('/admin_21/login');
-      return;
-    }
-
-    // Fetch initial CMS data from API
+    // Auth is handled server-side by middleware — just load CMS data
     fetch(`/api/cms?t=${Date.now()}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (res.status === 401 || res.status === 403) {
+          router.push('/admin_21/login');
+          return null;
+        }
+        return res.json();
+      })
       .then((json) => {
-        setData(json);
-        setLoading(false);
+        if (json) {
+          setData(json);
+          setLoading(false);
+        }
       })
       .catch((err) => {
         console.error('Failed to load CMS data:', err);
@@ -45,9 +47,10 @@ export default function AdminPage() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('portfolio_admin_auth');
+  const handleLogout = async () => {
+    await fetch('/api/admin-auth/logout', { method: 'POST' });
     router.push('/admin_21/login');
+    router.refresh();
   };
 
   if (loading || !data) {
