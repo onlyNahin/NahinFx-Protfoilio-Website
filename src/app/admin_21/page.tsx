@@ -19,7 +19,7 @@ export default function AdminPage() {
     }
 
     // Fetch initial CMS data from API
-    fetch('/api/cms')
+    fetch(`/api/cms?t=${Date.now()}`)
       .then((res) => res.json())
       .then((json) => {
         setData(json);

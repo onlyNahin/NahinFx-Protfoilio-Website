@@ -39,7 +39,7 @@ export default function HomePage() {
     requestAnimationFrame(raf);
 
     // Fetch CMS Data
-    fetch('/api/cms')
+    fetch(`/api/cms?t=${Date.now()}`)
       .then((res) => res.json())
       .then((json) => setData(json))
       .catch((err) => console.error('Error fetching CMS:', err));
